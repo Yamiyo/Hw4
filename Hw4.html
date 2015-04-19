@@ -1,0 +1,273 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<style>
+	#info {
+    position: absolute;
+    top: 0px;
+    width: 100%;
+    padding: 10px;
+    text-align: center;
+    color: #ffff00
+}
+</style>
+</head>
+
+<body>
+<div id="info">HW4<br/><strong>↑<br/>←  ↓  →</strong></div>
+<audio id="sound" style="display:none">
+<source src="music/door.wav" type='audio/mp3'>
+<script src="js/three.min.js"></script>
+<script src="js/OrbitControls.js"></script>
+<script src="js/KeyboardState.js"></script>
+<script src="js/dat.gui.min.js"></script>
+<script>
+// JUST A MATTER OF MrDoob's STYLE (see ppt)
+///////////////////////////////////////////////////////
+// I. GLOBAL VARS
+var camera, scene, renderer, geometry, material, light, controls;
+var angle = 0;
+var speed = 0;
+var clock = new THREE.Clock();
+var pos = new THREE.Vector3(0,0,0);
+var controls, keyboard = new KeyboardState();
+
+init();
+animate();
+
+function init() {
+
+    scene = new THREE.Scene();
+
+    camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
+	camera.position.y = 500;
+    camera.position.z = 500;
+    scene.add(camera);
+	
+	renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x888888);
+	renderer.shadowMapSoft = true;
+	renderer.shadowMapEnabled = true;
+	renderer.shadowMapType = THREE.PCFShadowMap;
+	
+	
+    THREE.ImageUtils.crossOrigin = '';
+    var colormap = THREE.ImageUtils.loadTexture("images/tire-side.png");
+	var colorbumpmap = THREE.ImageUtils.loadTexture("images/tire-side_SPEC.png");
+	
+    var colormap2 = THREE.ImageUtils.loadTexture("images/tire-wheel-1.jpg");
+	var colorbumpmap2 = THREE.ImageUtils.loadTexture("images/tire-wheel-1_NRM.jpg");
+	
+	
+    tire = new THREE.Object3D();
+	tire2 = new THREE.Object3D();
+	
+	var carGeometry = new THREE.BoxGeometry (50,10,100);		//底
+	var carMaterial = new THREE.MeshLambertMaterial ({color: 0x0000FF});
+	car = new THREE.Mesh (carGeometry, carMaterial);
+	car.rotation.x = -(Math.PI/2);
+	car.position.set (0, 0, -5);
+	
+	var axisGeometry = new THREE.CylinderGeometry (7,7,120,20,20);	//車軸  前進
+	var axisMaterial = new THREE.MeshLambertMaterial ({color: 0xFF0000});
+	axis = new THREE.Mesh (axisGeometry, axisMaterial);
+
+	axis.rotation.x = (Math.PI/2);
+	axis.position.set (0, 35, 0);
+	
+	var axisGeometry2 = new THREE.CylinderGeometry (7,7,50,20,20);	//車軸  左右
+	var axisMaterial2 = new THREE.MeshLambertMaterial ({color: 0xFF0000});
+	axis2 = new THREE.Mesh (axisGeometry2, axisMaterial2);
+	axis2.rotation.z = (Math.PI/2);
+	axis2.position.set (0, 0, 0);
+	
+	var controllerGeometry = new THREE.CylinderGeometry (3,3,145,20,20);	//操縱軸
+	var controllerMaterial = new THREE.MeshLambertMaterial ({color: 0xFF0000});
+	controller = new THREE.Mesh (controllerGeometry, controllerMaterial);
+	controller.rotation.z = -(Math.PI/2);
+	controller.position.set (60, 20, 0);
+	
+	var  operatGeometry = new THREE.CylinderGeometry (4,4,60,20,20);	//操縱桿
+	var  operatMaterial = new THREE.MeshLambertMaterial ({color: 0xFF0000});
+	operat = new THREE.Mesh ( operatGeometry,  operatMaterial);
+	operat.rotation.x = (Math.PI/2);
+	operat.position.set (0, 70, 0);
+	
+    geometry = new THREE.CircleGeometry(30, 20);    //輪胎框
+    material = new THREE.MeshPhongMaterial({
+        map: colormap,
+		bumpMap: colorbumpmap,
+		bumpScale  :  0.45,
+        transparent: true,  	
+        side: THREE.DoubleSide
+    });
+    var mesh = new THREE.Mesh(geometry, material);   //左輪
+	var mesh1 = new THREE.Mesh(geometry, material);	 //右輪
+	
+	
+	var torusgeometry = new THREE.TorusGeometry( 30, 6, 20, 100 );   //胎紋
+
+	var torusmaterial = new THREE.MeshPhongMaterial ();
+		torusmaterial.map = colormap2;
+		torusmaterial.bumpMap = colorbumpmap2;
+		torusmaterial.transparent = true;
+		torusmaterial.bumpScale = 0.8;
+			colormap2.wrapS = THREE.RepeatWrapping; 
+			colormap2.wrapT = THREE.ClampToEdgeWrapping;
+			colormap2.repeat.set(1,1);
+		torusmaterial.side = THREE.DoubleSide;
+	var torus = new THREE.Mesh( torusgeometry, torusmaterial );
+	torus.position.set(0, 0, 60);
+	var torus2 = new THREE.Mesh( torusgeometry, torusmaterial );
+	torus2.position.set(0, 0, -60);
+	
+
+    mesh.position.set(0, 0, 65);
+    mesh0 = mesh.clone();
+    mesh0.position.set(0, 0, 55);
+    mesh0.rotation.y = Math.PI;
+	
+	mesh1.position.set(0, 0, -65);
+    mesh2 = mesh1.clone();
+    mesh2.position.set(0, 0, -55);
+    mesh2.rotation.y = Math.PI;
+	
+    tire.add (mesh);
+    tire.add(mesh0);
+    tire.add(torus);
+	
+	tire2.add (mesh1);
+    tire2.add(mesh2);
+    tire2.add(torus2);
+	
+	tire.rotation.x = (-Math.PI/2);
+	tire2.rotation.x = (-Math.PI/2);
+	
+	tire.position.set (0,0,0);
+	tire2.position.set (0,0,0);
+    axis.add(tire);
+	axis.add(tire2);
+	controller.add(operat);
+	axis2.add (controller);
+	car.add (axis2);
+	axis.add (car);
+	scene.add (axis);
+	
+	var floorTexture = THREE.ImageUtils.loadTexture("images/floor.jpeg");   //地板
+	var floorbumpmap = THREE.ImageUtils.loadTexture("images/floor_NRM.jpg");
+	var floorMaterial = new THREE.MeshPhongMaterial( {  map: floorTexture, 
+														bumpMap: floorbumpmap,
+														bumpScale  :  0.45,
+														transparent: true,
+														side: THREE.DoubleSide
+														} );
+	
+	var floorGeometry = new THREE.PlaneGeometry(1000, 1000);
+	var floor = new THREE.Mesh(floorGeometry, floorMaterial);
+	floor.position.y = -0.5;
+	floor.rotation.x = Math.PI / 2;
+	scene.add(floor);
+	
+	
+    light = new THREE.SpotLight(0xffffff,1.5 );
+    light.position.set(0, 300, 0);
+	
+    light.target = tire;
+	light.target = tire2;
+	light.target = axis;
+	light.target = axis2;
+	light.target = operat;
+	light.target = controller;
+	light.target = car;
+	light.castShadow = true;
+    light.shadowMapWidth = 1024;
+    light.shadowMapHeight = 1024;
+	light.shadowDarkness = 0.5;
+    light.shadowCameraNear = 10;
+    light.shadowCameraFar = 4000;
+    light.shadowCameraFov = 120;
+
+    scene.add(light);
+	
+	floor.receiveShadow = true;
+	mesh.castShadow = true;
+	mesh0.castShadow = true;
+	torus.castShadow = true;
+	
+	mesh1.castShadow = true;
+	mesh2.castShadow = true;
+	torus2.castShadow = true;
+	
+	axis.castShadow = true;
+	axis2.castShadow = true;
+	operat.castShadow = true;
+	controller.castShadow = true;
+	car.castShadow = true;
+	
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+    document.body.appendChild(renderer.domElement);
+}
+
+function update()
+{
+	controls.update();
+	keyboard.update();         
+	if ( keyboard.pressed("left") ) 
+		angle += 0.03;               
+	if ( keyboard.pressed("right") )
+		angle -= 0.03;               
+	if ( keyboard.pressed("up") )  
+		speed += 1;        
+	if ( keyboard.pressed("down") )  
+		speed -= 1;  
+		
+	angle = opration(angle, -2 , 2);
+	speed = myclamp (speed, 0.0, 100.0);	
+	
+}
+
+function animate()
+{
+	var dt = clock.getDelta();
+
+	
+	if (axis != undefined) { 
+		axis.position.x -= dt*speed*(Math.PI*2);  	
+		car.rotation.z = opration(speed, -30 , 30)/(Math.PI*2*20); 		//加減速時
+		axis2.rotation.x = opration(angle, -2 , 2)/(Math.PI*2);   //左右轉時
+		tire.rotation.z += speed/(Math.PI*2*20);  
+		tire2.rotation.z += speed/(Math.PI*2*20);
+		
+		axis.rotation.z += -angle*dt*3/(Math.PI*2); 
+
+	}
+	
+	requestAnimationFrame ( animate );  
+	update();
+	render();  
+}
+
+function opration(x,lo,hi)		//旋轉角度
+{
+	if (x < lo) return lo;
+	if (x > hi) return hi;
+	return x;
+}
+
+function myclamp(x,lo,hi)		//移動速度
+{
+	if (x < lo) return lo;
+	if (x > hi) return hi;
+	return x;
+}
+
+function render() {
+    renderer.render(scene, camera);
+}
+
+</script>
+</body>
+
+</html>
